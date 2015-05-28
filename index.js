@@ -28,6 +28,7 @@ pouch.adapter('writableStream', pouchRepStream.adapters.writableStream);
  *              - filter
  *              - query_params
  *          see:
+ *          - cookieAuth: use cookie auth for couchdb
  *
  * http://wiki.apache.org/couchdb/Replication#Filtered_Replication
  */
@@ -36,8 +37,10 @@ var ExpressPouchReplicationStream = function(opts){
   var scope = {
     url             : typeof opts === 'string' ? opts : opts.url,
     dbReq           : !!opts.dbReq,
+    cookieAuth      : !!opts.cookieAuth,
     replicationOpts : opts.replication || {}
   };
+  
   // return function that fulfills the request
   return function(req, res, next){  
     var url = this.url;
@@ -45,7 +48,19 @@ var ExpressPouchReplicationStream = function(opts){
     if(this.dbReq){
       url += '/' + req.params.db;
     }
-    var db = new pouch(url);
+    var pouchOpts = {};
+    if(this.cookieAuth) {
+      var cookie = req.cookies.AuthSession;
+      if(cookie) {
+        cookie = 'AuthSession=' + cookie;
+      }
+      pouchOpts.ajax = {
+        headers: {
+          Cookie: cookie
+        }
+      };
+    }
+    var db = new pouch(url, pouchOpts);
     return db.dump(res, this.replicationOpts);
   }.bind(scope);
 };
